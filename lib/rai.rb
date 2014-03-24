@@ -7,17 +7,19 @@ module Rai
     # keep an eye on the cache to see if it needs updating
     set :watch_cache, true
     # resolution break-points (screen widths)
-    set :resolutions, [1382, 992, 768, 480, 320]
+    set :resolutions, [2560,1920,1440,1024,768,480]
     # jpg compression ratio, 0-100
-    set :jpg_quality, 75
+    set :jpg_quality, 85
     # wether image should be sharpened or not
     set :sharpen, true
     # 7 days
     set :cache_max_age, 60*60*24*7
     # where images are placed
-    set :img_path, File.join(File.dirname(__FILE__), 'images')
+    set :img_path, File.join(File.dirname(__FILE__), '..', 'images')
     # where cached versions are placed
-    set :cache_path, File.join(File.dirname(__FILE__), 'images', 'cache')
+    set :cache_path, File.join(File.dirname(__FILE__), '..', 'images', 'rai-cache')
+    # cookie name
+    set :cookie_name, 'rai-resolution'
 
     get %r{.*?\.(jpg|jpeg|png|gif)$} do
       @img_file = File.join(settings.img_path, @request_path)
@@ -26,6 +28,7 @@ module Rai
       @extension = params[:captures][0].downcase
 
       expires settings.cache_max_age, :private, :must_revalidate
+      last_modified File.mtime(@img_file)
 
       if File.exists? @cache_file
         refresh_cache
@@ -47,7 +50,7 @@ module Rai
       end
 
       def get_resolution_from_cookie
-        if res_cookie = request.cookies['resolution']
+        if res_cookie = request.cookies[settings.cookie_name]
           cookie_data = res_cookie.split(',')
           total_width = client_width = cookie_data[0].to_i
           # the device's pixel density factor (physical pixels per CSS pixel)
@@ -55,9 +58,7 @@ module Rai
           # by default use the largest supported break-point
           resolution = settings.resolutions.first
 
-          if pixel_density != 1
-            total_width = client_width * pixel_density
-          end
+          total_width = client_width * pixel_density
 
           resolution =
             settings.resolutions.select {|res| total_width <= res}.last
@@ -76,7 +77,7 @@ module Rai
       end
 
       def is_mobile
-        request.user_agent.downcase.match(/mobile/)
+        request.user_agent.downcase.match(/mobi|android|touch|mini/)
       end
 
       def refresh_cache

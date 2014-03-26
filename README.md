@@ -14,7 +14,7 @@ It runs as a sinatra application that can be mounted using Rack.
 
 Put something like this in your config.ru:
 
-```
+```ruby
 require 'rai'
 
 map '/images' do

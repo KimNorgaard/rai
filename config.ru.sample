@@ -1,0 +1,7 @@
+require 'rai'
+
+map '/images' do
+  Rai::App.set :img_path, '/path/to/your/images'
+  Rai::App.set :cache_path, '/path/to/your/cache'
+  run Rai::App
+end

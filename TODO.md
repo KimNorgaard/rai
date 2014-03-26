@@ -6,3 +6,4 @@
   - check up on cookie-stuff - https://github.com/MattWilcox/Adaptive-Images/pull/139
   - android pixel density - https://github.com/MattWilcox/Adaptive-Images/issues/99
   - http client hints: https://github.com/MattWilcox/Adaptive-Images/pull/128
+  - development vs production environments

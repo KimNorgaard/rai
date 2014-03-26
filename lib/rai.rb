@@ -4,29 +4,43 @@ require 'fileutils'
 
 module Rai
   class App < Sinatra::Base
-    # keep an eye on the cache to see if it needs updating
+    # Keep an eye on the cache to see if it needs updating
     set :watch_cache, true
-    # resolution break-points (screen widths)
-    set :resolutions, [2560,1920,1440,1024,768,480]
-    # jpg compression ratio, 0-100
+
+    # Resolution break-points (screen widths)
+    set :resolutions, [2560, 1920, 1440, 1024, 768, 480]
+
+    # JPG compression ratio, 0-100
     set :jpg_quality, 85
-    # wether image should be sharpened or not
+
+    # Sharpen images after resize
     set :sharpen, true
-    # 7 days
+
+    # Cache Time-To-Live
     set :cache_max_age, 60*60*24*7
-    # where images are placed
+
+    # Image location
     set :img_path, File.join(File.dirname(__FILE__), '..', 'images')
-    # where cached versions are placed
+
+    # Cache location
     set :cache_path, File.join(File.dirname(__FILE__), '..', 'images', 'rai-cache')
-    # cookie name
+
+    # Cookie name
     set :cookie_name, 'rai-resolution'
+
+    before do
+      @request_path = URI.decode(request.path_info)
+      settings.resolutions.sort!{|x,y| y <=> x }
+      @resolution = get_resolution
+    end
 
     get %r{.*?\.(jpg|jpeg|png|gif)$} do
       @img_file = File.join(settings.img_path, @request_path)
       not_found unless File.exists? @img_file
       @cache_file = File.join(settings.cache_path, @resolution.to_s, @request_path)
-      @extension = params[:captures][0].downcase
+      @image_type = params[:captures][0].downcase
 
+      # Set caching headers
       expires settings.cache_max_age, :private, :must_revalidate
       last_modified File.mtime(@img_file)
 
@@ -35,13 +49,8 @@ module Rai
       else
         update_cached_image
       end
-      send_file @cache_file
-    end
 
-    before do
-      @request_path = URI.decode(request.path_info)
-      settings.resolutions.sort!{|x,y| y <=> x }
-      @resolution = get_resolution
+      send_file @cache_file
     end
 
     helpers do
@@ -90,8 +99,8 @@ module Rai
 
       def update_cached_image
         cache_dir = File.dirname(@cache_file)
+
         begin
-          #Dir.mkdir(settings.cache_path, 0755) unless File.directory?(settings.cache_path)
           FileUtils.mkdir_p(cache_dir, :mode => 0755) unless File.directory?(cache_dir)
         rescue SystemCallError => e
           halt(500, "Unable to create caching directory. #{e}")
@@ -115,12 +124,14 @@ module Rai
         new_width  = @resolution
         new_height = (new_width*ratio).ceil
 
-        if @extension == 'jpg'
+        if @image_type == 'jpg'
           image.combine_options do |c|
             c.interlace 'plane'
             c.quality settings.jpg_quality
           end
         end
+
+        image.resize "#{new_width}x#{new_height}"
 
         if settings.sharpen
           radius    = 0.5
@@ -129,8 +140,6 @@ module Rai
           threshold = 0.02
           image.unsharp "#{radius}x#{sigma}+#{amount}+#{threshold}"
         end
-
-        image.resize "#{new_width}x#{new_height}"
 
         begin
           image.write @cache_file

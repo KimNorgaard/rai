@@ -2,3 +2,4 @@
 pkg
 *.cache
 Gemfile.lock
+config.ru
